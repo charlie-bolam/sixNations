@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Six Nations Fantasy - Team Builder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🏉 Six Nations Fantasy Team Builder</h1>
+            <p>Create and test your fantasy rugby team with real player prices and stats</p>
+        </header>
+
+        <main>
+            <div class="layout">
+                <!-- Left Panel: Player Selection -->
+                <section class="panel left-panel">
+                    <h2>Player Selection</h2>
+
+                    <div class="filters">
+                        <select id="countryFilter" class="filter-select">
+                            <option value="">All Countries</option>
+                        </select>
+                        <select id="positionFilter" class="filter-select">
+                            <option value="">All Positions</option>
+                        </select>
+                    </div>
+
+                    <div class="player-list" id="playerList">
+                        <!-- Players will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Middle: Team Stats -->
+                <section class="panel middle-panel">
+                    <h2>Team Summary</h2>
+
+                    <div class="team-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Squad Size:</span>
+                            <span class="stat-value" id="squadSize">0 / 15</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Spent:</span>
+                            <span class="stat-value" id="totalSpent">£0.0m</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Budget Remaining:</span>
+                            <span class="stat-value" id="budgetRemaining">£120.0m</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Points:</span>
+                            <span class="stat-value" id="totalPoints">0</span>
+                        </div>
+                    </div>
+
+                    <div class="team-validation" id="teamValidation"></div>
+
+                    <h3>Country Breakdown</h3>
+                    <div class="breakdown" id="countryBreakdown"></div>
+
+                    <h3>Position Breakdown</h3>
+                    <div class="breakdown" id="positionBreakdown"></div>
+
+                    <div class="button-group">
+                        <button id="clearTeam" class="btn btn-secondary">Clear Team</button>
+                        <button id="saveTeam" class="btn btn-primary">Save Team</button>
+                    </div>
+                </section>
+
+                <!-- Right Panel: Selected Players -->
+                <section class="panel right-panel">
+                    <h2>Your Team (15 Players)</h2>
+
+                    <div class="selected-players" id="selectedPlayers">
+                        <p class="empty-message">Select players to build your team</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Modal for saving team -->
+        <div id="saveModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Save Team</h2>
+                <input type="text" id="teamName" placeholder="Enter team name" class="team-name-input">
+                <div class="modal-buttons">
+                    <button id="confirmSave" class="btn btn-primary">Save</button>
+                    <button id="cancelSave" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -115,6 +115,19 @@ main {
     background: #f0f4ff;
 }
 
+.edit-player-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #667eea;
+    padding: 0 5px;
+}
+
+.edit-player-btn:hover {
+    color: #5568d3;
+}
+
 .player-card.selected {
     border-color: #667eea;
     background: #e8edf9;
@@ -403,6 +416,21 @@ main {
 .modal-buttons {
     display: flex;
     gap: 10px;
+}
+
+/* additional styling for player modal inputs */
+.player-form input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+#addPlayerBtn {
+    padding: 8px 12px;
+    font-size: 0.9em;
 }
 
 .modal-buttons .btn {

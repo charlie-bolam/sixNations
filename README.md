@@ -107,9 +107,16 @@ The backend will start on `http://localhost:5201`
 
 ### Players
 - `GET /api/players` - Get all players (supports `?country=` and `?position=` filters)
+- `POST /api/players` - Add a new player (see frontend 'Add Player' button)
+- `PUT /api/players/{id}` - Update an existing player (also accessible via edit icon in player list)
+- `DELETE /api/players/{id}` - Remove a player (API only)
 - `GET /api/players/{id}` - Get a specific player
+- `PUT /api/players/{id}` - Update an existing player
+- `DELETE /api/players/{id}` - Remove a player
 - `GET /api/players/countries` - Get list of countries
 - `GET /api/players/positions` - Get list of positions
+
+*All endpoints operate on an in-memory list, so changes reset when the server restarts.*
 
 ### Teams
 - `POST /api/teams` - Create a team

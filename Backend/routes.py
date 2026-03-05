@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from services import get_mock_players
+import services
+from services import get_players, add_player, update_player, delete_player
 from models import Team, TeamResponse
 
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -11,12 +12,12 @@ next_team_id = 1
 # --- PLAYERS ENDPOINTS ---
 
 @api.route('/players', methods=['GET'])
-def get_players():
+def list_players():
     """Get all players with optional filtering"""
     country = request.args.get('country')
     position = request.args.get('position')
     
-    players = get_mock_players()
+    players = get_players()
     
     if country:
         players = [p for p in players if p.country.lower() == country.lower()]
@@ -26,28 +27,51 @@ def get_players():
     
     return jsonify([p.to_dict() for p in players])
 
+@api.route('/players', methods=['POST'])
+def create_player():
+    """Add a new player to the list"""
+    data = request.get_json()
+    player = add_player(data)
+    return jsonify(player.to_dict()), 201
+
 @api.route('/players/<int:player_id>', methods=['GET'])
-def get_player(player_id):
+def fetch_player(player_id):
     """Get a specific player"""
-    players = get_mock_players()
-    player = next((p for p in players if p.id == player_id), None)
+    player = next((p for p in get_players() if p.id == player_id), None)
     
     if not player:
         return jsonify({'error': 'Player not found'}), 404
     
     return jsonify(player.to_dict())
 
+@api.route('/players/<int:player_id>', methods=['PUT'])
+def update_player_route(player_id):
+    """Update an existing player"""
+    data = request.get_json()
+    player = update_player(player_id, data)
+    if not player:
+        return jsonify({'error': 'Player not found'}), 404
+    return jsonify(player.to_dict())
+
+@api.route('/players/<int:player_id>', methods=['DELETE'])
+def delete_player_route(player_id):
+    """Remove a player from the list"""
+    success = delete_player(player_id)
+    if not success:
+        return jsonify({'error': 'Player not found'}), 404
+    return '', 204
+
 @api.route('/players/countries', methods=['GET'])
 def get_countries():
     """Get list of all countries"""
-    players = get_mock_players()
+    players = get_players()
     countries = sorted(list(set(p.country for p in players)))
     return jsonify(countries)
 
 @api.route('/players/positions', methods=['GET'])
 def get_positions():
     """Get list of all positions"""
-    players = get_mock_players()
+    players = get_players()
     positions = sorted(list(set(p.position for p in players)))
     return jsonify(positions)
 
@@ -59,7 +83,7 @@ def create_team():
     global next_team_id
     
     data = request.get_json()
-    all_players = get_mock_players()
+    all_players = get_players()
     
     team = Team(
         id=next_team_id,
@@ -92,7 +116,7 @@ def get_team(team_id):
     if not team:
         return jsonify({'error': 'Team not found'}), 404
     
-    all_players = get_mock_players()
+    all_players = get_players()
     selected_players = [p for p in all_players if p.id in team.player_ids]
     
     response = TeamResponse(team=team, players=selected_players)
@@ -113,7 +137,7 @@ def validate_team():
     player_ids = request.get_json()
     
     BUDGET = 120.0
-    all_players = get_mock_players()
+    all_players = get_players()
     selected_players = [p for p in all_players if p.id in player_ids]
     
     total_price = sum(p.price for p in selected_players)

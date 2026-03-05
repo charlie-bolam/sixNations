@@ -17,6 +17,7 @@ function setupEventListeners() {
     document.getElementById('positionFilter').addEventListener('change', filterPlayers);
     document.getElementById('clearTeam').addEventListener('click', clearTeam);
     document.getElementById('saveTeam').addEventListener('click', showSaveModal);
+    document.getElementById('addPlayerBtn').addEventListener('click', () => showPlayerModal());
 
     // Modal controls
     const modal = document.getElementById('saveModal');
@@ -24,13 +25,25 @@ function setupEventListeners() {
     const cancelBtn = document.getElementById('cancelSave');
     const confirmBtn = document.getElementById('confirmSave');
 
+    const playerModal = document.getElementById('playerModal');
+    const closePlayer = document.querySelector('.close-player');
+    const cancelPlayer = document.getElementById('cancelPlayer');
+    const confirmPlayer = document.getElementById('confirmPlayer');
+
     closeBtn.addEventListener('click', () => modal.style.display = 'none');
     cancelBtn.addEventListener('click', () => modal.style.display = 'none');
     confirmBtn.addEventListener('click', saveTeam);
 
+    closePlayer.addEventListener('click', () => playerModal.style.display = 'none');
+    cancelPlayer.addEventListener('click', () => playerModal.style.display = 'none');
+    confirmPlayer.addEventListener('click', savePlayer);
+
     window.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.style.display = 'none';
+        }
+        if (e.target === playerModal) {
+            playerModal.style.display = 'none';
         }
     });
 }
@@ -90,6 +103,74 @@ async function loadPositions() {
     }
 }
 
+// ----------------------------------
+// Player management helpers
+// ----------------------------------
+
+function showPlayerModal(player = null) {
+    const modal = document.getElementById('playerModal');
+    const title = document.getElementById('playerModalTitle');
+
+    if (player) {
+        title.textContent = 'Edit Player';
+        document.getElementById('playerId').value = player.id;
+        document.getElementById('playerName').value = player.name;
+        document.getElementById('playerCountry').value = player.country;
+        document.getElementById('playerPosition').value = player.position;
+        document.getElementById('playerPrice').value = player.price;
+        document.getElementById('playerPPG').value = player.pointsPerGame;
+        document.getElementById('playerGames').value = player.gamesPlayed;
+        document.getElementById('playerTotal').value = player.totalPoints;
+    } else {
+        title.textContent = 'Add Player';
+        document.getElementById('playerId').value = '';
+        document.getElementById('playerName').value = '';
+        document.getElementById('playerCountry').value = '';
+        document.getElementById('playerPosition').value = '';
+        document.getElementById('playerPrice').value = '';
+        document.getElementById('playerPPG').value = '';
+        document.getElementById('playerGames').value = '';
+        document.getElementById('playerTotal').value = '';
+    }
+    modal.classList.add('show');
+}
+
+async function savePlayer() {
+    const id = document.getElementById('playerId').value;
+    const data = {
+        name: document.getElementById('playerName').value.trim(),
+        country: document.getElementById('playerCountry').value.trim(),
+        position: document.getElementById('playerPosition').value.trim(),
+        price: parseFloat(document.getElementById('playerPrice').value) || 0,
+        points_per_game: parseFloat(document.getElementById('playerPPG').value) || 0,
+        games_played: parseInt(document.getElementById('playerGames').value) || 0,
+        total_points: parseFloat(document.getElementById('playerTotal').value) || 0
+    };
+
+    let url = `${API_BASE_URL}/players`;
+    let method = 'POST';
+    if (id) {
+        url += `/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        const resp = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!resp.ok) throw new Error('Failed to save');
+        await loadPlayers();
+        await loadCountries();
+        await loadPositions();
+        document.getElementById('playerModal').classList.remove('show');
+    } catch (e) {
+        alert('Error saving player');
+        console.error(e);
+    }
+}
+
 // Render players
 function renderPlayers(players) {
     const playerList = document.getElementById('playerList');
@@ -115,9 +196,20 @@ function renderPlayers(players) {
                 <div class="player-price">£${player.price.toFixed(1)}m</div>
                 <div class="player-points">${player.totalPoints} pts</div>
             </div>
+            <button class="edit-player-btn" title="Edit">✎</button>
         `;
 
-        card.addEventListener('click', () => togglePlayer(player));
+        // clicking card toggles selection
+        card.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('edit-player-btn')) {
+                togglePlayer(player);
+            }
+        });
+        // edit button
+        card.querySelector('.edit-player-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showPlayerModal(player);
+        });
         playerList.appendChild(card);
     });
 }

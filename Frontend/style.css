@@ -286,6 +286,8 @@ main {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
+    transition: all 0.3s;
 }
 
 .selected-player:hover {
@@ -304,6 +306,29 @@ main {
 .selected-player-details {
     font-size: 0.85em;
     color: #666;
+}
+
+.selected-player-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.captain-btn {
+    background: #fbc02d;
+    color: #333;
+    border: 2px solid #f9a825;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    font-weight: bold;
+    transition: all 0.3s;
+    width: 35px;
+}
+
+.captain-btn:hover {
+    background: #f9a825;
+    transform: scale(1.1);
 }
 
 .remove-btn {

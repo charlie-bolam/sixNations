@@ -93,15 +93,23 @@ def create_team():
     """Create a new team"""
     data = request.get_json()
     player_ids = data.get('playerIds', [])
+    captain_id = data.get('captainId')
     players = Player.query.filter(Player.id.in_(player_ids)).all()
 
     team = Team(
         name=data.get('name', 'Unnamed Team'),
-        players=players
+        players=players,
+        captain_id=captain_id
     )
     # calculate totals
     team.total_price = sum(p.price for p in players)
-    team.total_points = sum(p.total_points for p in players)
+    total_points = sum(p.total_points for p in players)
+    # Double captain's points
+    if captain_id:
+        captain = Player.query.get(captain_id)
+        if captain:
+            total_points += captain.total_points
+    team.total_points = total_points
 
     db.session.add(team)
     db.session.commit()
@@ -135,13 +143,21 @@ def delete_team(team_id):
 @api.route('/teams/validate', methods=['POST'])
 def validate_team():
     """Validate a team configuration"""
-    player_ids = request.get_json()
+    data = request.get_json()
+    player_ids = data.get('playerIds', []) if isinstance(data, dict) else data
+    captain_id = data.get('captainId') if isinstance(data, dict) else None
     
     BUDGET = 120.0
     selected_players = Player.query.filter(Player.id.in_(player_ids)).all()
     
     total_price = sum(p.price for p in selected_players)
     total_points = sum(p.total_points for p in selected_players)
+    
+    # Double captain's points
+    if captain_id:
+        captain = Player.query.get(captain_id)
+        if captain:
+            total_points += captain.total_points
     
     country_count = {}
     for p in selected_players:
@@ -153,8 +169,8 @@ def validate_team():
     
     errors = []
     
-    if len(selected_players) != 15:
-        errors.append(f"A team must have exactly 15 players. You have {len(selected_players)}.")
+    if len(selected_players) != 16:
+        errors.append(f"A team must have exactly 16 players (including 1 sub). You have {len(selected_players)}.")
     
     if total_price > BUDGET:
         errors.append(f"Team exceeds budget. Total: £{total_price}m vs £{BUDGET}m budget.")
@@ -162,6 +178,11 @@ def validate_team():
     for country, count in country_count.items():
         if count > 4:
             errors.append(f"Maximum 4 players per country. {country}: {count}")
+    
+    if not captain_id:
+        errors.append("You must select a captain.")
+    elif captain_id not in [p.id for p in selected_players]:
+        errors.append("Captain must be one of your selected players.")
     
     is_valid = len(errors) == 0
     
@@ -173,6 +194,12 @@ def validate_team():
     three_quarters = len([p for p in selected_players if p.position in ["Centre", "Wing"]])
     fullbacks = len([p for p in selected_players if p.position == "Full-Back"])
     
+    captain_name = None
+    if captain_id:
+        captain = Player.query.get(captain_id)
+        if captain:
+            captain_name = captain.name
+    
     return jsonify({
         'isValid': is_valid,
         'errors': errors,
@@ -181,6 +208,7 @@ def validate_team():
             'totalPrice': round(total_price, 2),
             'budgetRemaining': round(BUDGET - total_price, 2),
             'totalPoints': round(total_points, 2),
+            'captainName': captain_name,
             'playersByCountry': country_count,
             'playersByPosition': position_count,
             'lineup': {

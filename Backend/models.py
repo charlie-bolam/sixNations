@@ -42,6 +42,7 @@ class Team(db.Model):
     name = db.Column(db.String, nullable=False)
     players = db.relationship('Player', secondary=team_players, lazy='subquery',
                               backref=db.backref('teams', lazy=True))
+    captain_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=True)
     total_price = db.Column(db.Float, nullable=False, default=0)
     total_points = db.Column(db.Float, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -51,6 +52,7 @@ class Team(db.Model):
             'id': self.id,
             'name': self.name,
             'playerIds': [p.id for p in self.players],
+            'captainId': self.captain_id,
             'totalPrice': self.total_price,
             'totalPoints': self.total_points,
             'createdAt': self.created_at.isoformat()

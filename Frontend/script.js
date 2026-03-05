@@ -2,6 +2,7 @@ const API_BASE_URL = 'http://localhost:5201/api';
 
 let allPlayers = [];
 let selectedPlayerIds = [];
+let captainId = null;
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -233,11 +234,15 @@ function togglePlayer(player) {
 
     if (index > -1) {
         selectedPlayerIds.splice(index, 1);
+        // If the removed player was captain, clear captain
+        if (captainId === player.id) {
+            captainId = null;
+        }
     } else {
-        if (selectedPlayerIds.length < 15) {
+        if (selectedPlayerIds.length < 16) {
             selectedPlayerIds.push(player.id);
         } else {
-            alert('You can only select 15 players');
+            alert('You can only select 16 players (including 1 sub)');
             return;
         }
     }
@@ -251,12 +256,20 @@ async function updateTeamDisplay() {
     const selectedPlayers = allPlayers.filter(p => selectedPlayerIds.includes(p.id));
 
     // Update squad size
-    document.getElementById('squadSize').textContent = `${selectedPlayerIds.length} / 15`;
+    document.getElementById('squadSize').textContent = `${selectedPlayerIds.length} / 16`;
 
     // Calculate totals
     const totalSpent = selectedPlayers.reduce((sum, p) => sum + p.price, 0);
     const budgetRemaining = 120 - totalSpent;
-    const totalPoints = selectedPlayers.reduce((sum, p) => sum + p.totalPoints, 0);
+    let totalPoints = selectedPlayers.reduce((sum, p) => sum + p.totalPoints, 0);
+
+    // Double captain's points if selected
+    if (captainId) {
+        const captain = selectedPlayers.find(p => p.id === captainId);
+        if (captain) {
+            totalPoints += captain.totalPoints;
+        }
+    }
 
     document.getElementById('totalSpent').textContent = `£${totalSpent.toFixed(1)}m`;
     document.getElementById('budgetRemaining').textContent = `£${budgetRemaining.toFixed(1)}m`;
@@ -295,12 +308,15 @@ async function updateTeamDisplay() {
         selectedPlayersDiv.innerHTML = selectedPlayers
             .sort((a, b) => a.position.localeCompare(b.position))
             .map(player => `
-                <div class="selected-player">
+                <div class="selected-player" ${captainId === player.id ? 'style="background-color: #fff9c4; border-left: 4px solid #fbc02d;"' : ''}>
                     <div class="selected-player-info">
-                        <div class="selected-player-name">${player.name}</div>
+                        <div class="selected-player-name">${player.name}${captainId === player.id ? ' ⭐ Captain' : ''}</div>
                         <div class="selected-player-details">${player.position} • ${player.country} • £${player.price.toFixed(1)}m</div>
                     </div>
-                    <button class="remove-btn" onclick="removePlayer(${player.id})">Remove</button>
+                    <div class="selected-player-actions">
+                        <button class="captain-btn" onclick="setCaptain(${player.id})" title="Set as Captain">${captainId === player.id ? '✓' : 'C'}</button>
+                        <button class="remove-btn" onclick="removePlayer(${player.id})">Remove</button>
+                    </div>
                 </div>
             `)
             .join('');
@@ -310,9 +326,22 @@ async function updateTeamDisplay() {
     await validateTeam();
 }
 
+// Set captain
+function setCaptain(playerId) {
+    if (captainId === playerId) {
+        captainId = null;
+    } else {
+        captainId = playerId;
+    }
+    updateTeamDisplay();
+}
+
 // Remove player
 function removePlayer(playerId) {
     selectedPlayerIds = selectedPlayerIds.filter(id => id !== playerId);
+    if (captainId === playerId) {
+        captainId = null;
+    }
     filterPlayers();
     updateTeamDisplay();
 }
@@ -332,7 +361,10 @@ async function validateTeam() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(selectedPlayerIds)
+            body: JSON.stringify({
+                playerIds: selectedPlayerIds,
+                captainId: captainId
+            })
         });
 
         const result = await response.json();
@@ -364,8 +396,13 @@ function clearTeam() {
 
 // Show save modal
 function showSaveModal() {
-    if (selectedPlayerIds.length !== 15) {
-        alert('You must select exactly 15 players to save your team');
+    if (selectedPlayerIds.length !== 16) {
+        alert('You must select exactly 16 players (including 1 sub) to save your team');
+        return;
+    }
+
+    if (!captainId) {
+        alert('You must select a captain for your team');
         return;
     }
 
@@ -391,13 +428,19 @@ async function saveTeam() {
             },
             body: JSON.stringify({
                 name: teamName,
-                playerIds: selectedPlayerIds
+                playerIds: selectedPlayerIds,
+                captainId: captainId
             })
         });
 
         if (response.ok) {
             alert(`Team "${teamName}" saved successfully!`);
             document.getElementById('saveModal').classList.remove('show');
+            // Reset team
+            selectedPlayerIds = [];
+            captainId = null;
+            filterPlayers();
+            updateTeamDisplay();
         } else {
             alert('Failed to save team');
         }

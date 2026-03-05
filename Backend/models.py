@@ -1,19 +1,28 @@
-from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import List, Optional
+from flask_sqlalchemy import SQLAlchemy
 
-@dataclass
-class Player:
-    id: int
-    name: str
-    position: str
-    country: str
-    price: float
-    points_per_game: float
-    games_played: int
-    total_points: float
-    is_injured: bool = False
-    
+# SQLAlchemy instance (initialized in app.py)
+db = SQLAlchemy()
+
+# Association table for many-to-many Team <-> Player
+team_players = db.Table(
+    'team_players',
+    db.Column('team_id', db.Integer, db.ForeignKey('team.id'), primary_key=True),
+    db.Column('player_id', db.Integer, db.ForeignKey('player.id'), primary_key=True)
+)
+
+class Player(db.Model):
+    __tablename__ = 'player'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    position = db.Column(db.String, nullable=False)
+    country = db.Column(db.String, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    points_per_game = db.Column(db.Float, nullable=False)
+    games_played = db.Column(db.Integer, nullable=False)
+    total_points = db.Column(db.Float, nullable=False)
+    is_injured = db.Column(db.Boolean, default=False)
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -27,34 +36,31 @@ class Player:
             'isInjured': self.is_injured
         }
 
-@dataclass
-class Team:
-    id: int
-    name: str
-    player_ids: List[int]
-    total_price: float
-    total_points: float
-    created_at: str = None
-    
-    def __post_init__(self):
-        if self.created_at is None:
-            self.created_at = datetime.utcnow().isoformat()
-    
+class Team(db.Model):
+    __tablename__ = 'team'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    players = db.relationship('Player', secondary=team_players, lazy='subquery',
+                              backref=db.backref('teams', lazy=True))
+    total_price = db.Column(db.Float, nullable=False, default=0)
+    total_points = db.Column(db.Float, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
-            'playerIds': self.player_ids,
+            'playerIds': [p.id for p in self.players],
             'totalPrice': self.total_price,
             'totalPoints': self.total_points,
-            'createdAt': self.created_at
+            'createdAt': self.created_at.isoformat()
         }
 
-@dataclass
 class TeamResponse:
-    team: Team
-    players: List[Player]
-    
+    def __init__(self, team, players):
+        self.team = team
+        self.players = players
+
     def to_dict(self):
         return {
             'team': self.team.to_dict(),

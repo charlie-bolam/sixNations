@@ -1,13 +1,8 @@
 from flask import Blueprint, request, jsonify
-import services
-from services import get_players, add_player, update_player, delete_player
-from models import Team, TeamResponse
+from models import db, Player, Team, TeamResponse
 
 api = Blueprint('api', __name__, url_prefix='/api')
 
-# In-memory storage for teams
-teams = {}
-next_team_id = 1
 
 # --- PLAYERS ENDPOINTS ---
 
@@ -17,62 +12,78 @@ def list_players():
     country = request.args.get('country')
     position = request.args.get('position')
     
-    players = get_players()
-    
+    query = Player.query
     if country:
-        players = [p for p in players if p.country.lower() == country.lower()]
-    
+        query = query.filter(Player.country.ilike(country))
     if position:
-        players = [p for p in players if p.position.lower() == position.lower()]
-    
+        query = query.filter(Player.position.ilike(position))
+    players = query.all()
     return jsonify([p.to_dict() for p in players])
 
 @api.route('/players', methods=['POST'])
 def create_player():
-    """Add a new player to the list"""
+    """Add a new player to the database"""
     data = request.get_json()
-    player = add_player(data)
+    player = Player(
+        name=data.get('name',''),
+        position=data.get('position',''),
+        country=data.get('country',''),
+        price=float(data.get('price',0)),
+        points_per_game=float(data.get('points_per_game',0)),
+        games_played=int(data.get('games_played',0)),
+        total_points=float(data.get('total_points',0)),
+        is_injured=bool(data.get('is_injured', False))
+    )
+    db.session.add(player)
+    db.session.commit()
     return jsonify(player.to_dict()), 201
 
 @api.route('/players/<int:player_id>', methods=['GET'])
 def fetch_player(player_id):
     """Get a specific player"""
-    player = next((p for p in get_players() if p.id == player_id), None)
-    
+    player = Player.query.get(player_id)
     if not player:
         return jsonify({'error': 'Player not found'}), 404
-    
     return jsonify(player.to_dict())
 
 @api.route('/players/<int:player_id>', methods=['PUT'])
 def update_player_route(player_id):
     """Update an existing player"""
-    data = request.get_json()
-    player = update_player(player_id, data)
+    player = Player.query.get(player_id)
     if not player:
         return jsonify({'error': 'Player not found'}), 404
+    data = request.get_json()
+    player.name = data.get('name', player.name)
+    player.position = data.get('position', player.position)
+    player.country = data.get('country', player.country)
+    player.price = float(data.get('price', player.price))
+    player.points_per_game = float(data.get('points_per_game', player.points_per_game))
+    player.games_played = int(data.get('games_played', player.games_played))
+    player.total_points = float(data.get('total_points', player.total_points))
+    player.is_injured = bool(data.get('is_injured', player.is_injured))
+    db.session.commit()
     return jsonify(player.to_dict())
 
 @api.route('/players/<int:player_id>', methods=['DELETE'])
 def delete_player_route(player_id):
-    """Remove a player from the list"""
-    success = delete_player(player_id)
-    if not success:
+    """Remove a player from the database"""
+    player = Player.query.get(player_id)
+    if not player:
         return jsonify({'error': 'Player not found'}), 404
+    db.session.delete(player)
+    db.session.commit()
     return '', 204
 
 @api.route('/players/countries', methods=['GET'])
 def get_countries():
     """Get list of all countries"""
-    players = get_players()
-    countries = sorted(list(set(p.country for p in players)))
+    countries = [row[0] for row in db.session.query(Player.country).distinct().order_by(Player.country).all()]
     return jsonify(countries)
 
 @api.route('/players/positions', methods=['GET'])
 def get_positions():
     """Get list of all positions"""
-    players = get_players()
-    positions = sorted(list(set(p.position for p in players)))
+    positions = [row[0] for row in db.session.query(Player.position).distinct().order_by(Player.position).all()]
     return jsonify(positions)
 
 # --- TEAMS ENDPOINTS ---
@@ -80,55 +91,45 @@ def get_positions():
 @api.route('/teams', methods=['POST'])
 def create_team():
     """Create a new team"""
-    global next_team_id
-    
     data = request.get_json()
-    all_players = get_players()
-    
+    player_ids = data.get('playerIds', [])
+    players = Player.query.filter(Player.id.in_(player_ids)).all()
+
     team = Team(
-        id=next_team_id,
         name=data.get('name', 'Unnamed Team'),
-        player_ids=data.get('playerIds', []),
-        total_price=0,
-        total_points=0
+        players=players
     )
-    
-    # Calculate totals
-    selected_players = [p for p in all_players if p.id in team.player_ids]
-    team.total_price = sum(p.price for p in selected_players)
-    team.total_points = sum(p.total_points for p in selected_players)
-    
-    teams[next_team_id] = team
-    next_team_id += 1
-    
+    # calculate totals
+    team.total_price = sum(p.price for p in players)
+    team.total_points = sum(p.total_points for p in players)
+
+    db.session.add(team)
+    db.session.commit()
     return jsonify(team.to_dict()), 201
 
 @api.route('/teams', methods=['GET'])
 def get_teams():
     """Get all saved teams"""
-    return jsonify([t.to_dict() for t in teams.values()])
+    teams = Team.query.all()
+    return jsonify([t.to_dict() for t in teams])
 
 @api.route('/teams/<int:team_id>', methods=['GET'])
 def get_team(team_id):
     """Get a specific team with its players"""
-    team = teams.get(team_id)
-    
+    team = Team.query.get(team_id)
     if not team:
         return jsonify({'error': 'Team not found'}), 404
-    
-    all_players = get_players()
-    selected_players = [p for p in all_players if p.id in team.player_ids]
-    
-    response = TeamResponse(team=team, players=selected_players)
+    response = TeamResponse(team=team, players=team.players)
     return jsonify(response.to_dict())
 
 @api.route('/teams/<int:team_id>', methods=['DELETE'])
 def delete_team(team_id):
     """Delete a team"""
-    if team_id not in teams:
+    team = Team.query.get(team_id)
+    if not team:
         return jsonify({'error': 'Team not found'}), 404
-    
-    del teams[team_id]
+    db.session.delete(team)
+    db.session.commit()
     return '', 204
 
 @api.route('/teams/validate', methods=['POST'])
@@ -137,8 +138,7 @@ def validate_team():
     player_ids = request.get_json()
     
     BUDGET = 120.0
-    all_players = get_players()
-    selected_players = [p for p in all_players if p.id in player_ids]
+    selected_players = Player.query.filter(Player.id.in_(player_ids)).all()
     
     total_price = sum(p.price for p in selected_players)
     total_points = sum(p.total_points for p in selected_players)

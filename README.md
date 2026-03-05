@@ -10,7 +10,7 @@ sixNations/
 │   ├── app.py                        # Flask application entry point
 │   ├── routes.py                     # API endpoints
 │   ├── models.py                     # Player and Team models
-│   ├── services.py                   # Mock player data
+│   └── (data stored in SQLite via SQLAlchemy)
 │   ├── requirements.txt              # Python dependencies
 │   └── .gitignore                    # Git ignore rules
 │
@@ -127,20 +127,20 @@ The backend will start on `http://localhost:5201`
 
 ## Data
 
-The application uses mock data with 30 real rugby players from the Six Nations:
+The application uses a SQLite database seeded with 30 real rugby players from the Six Nations on first run:
 - **5 players per country** (England, Ireland, France, Wales, Scotland, Italy)
 - **Real positions** and player types
-- **Mock prices** ranging from £6.2m to £9.2m
-- **Mock stats** including points and games played
+- **Prices** ranging from £6.2m to £9.2m
+- **Stats** including points and games played
 
-To integrate with the real Six Nations Fantasy website, update the `MockDataService.cs` to fetch from their API or database.
+The `Backend/app.py` file contains the seeding logic; you can modify it to fetch live data from the Six Nations Fantasy site or any other source.
 
 ## Development
 
 ### Adding Real Player Data
-1. Update `MockDataService.GetMockPlayers()` to fetch from the Six Nations API
-2. Or replace with data scraped from the Six Nations Fantasy website
-3. Update player prices and statistics as needed
+1. Edit `Backend/app.py` seed section or write a migration to pull from an API
+2. Run the backend to recreate and reseed the database (delete `sixnations.db` if needed)
+3. Player records will persist in `sixnations.db`
 
 ### Modifying Team Rules
 Edit the Python 3.8+ is installed: `python --version`

@@ -3,6 +3,7 @@ const API_BASE_URL = 'http://localhost:5201/api';
 let allPlayers = [];
 let selectedPlayerIds = [];
 let captainId = null;
+let substituteId = null;
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', async () => {
@@ -271,6 +272,14 @@ async function updateTeamDisplay() {
         }
     }
 
+    // Triple substitute's points if selected
+    if (substituteId) {
+        const substitute = selectedPlayers.find(p => p.id === substituteId);
+        if (substitute) {
+            totalPoints += substitute.totalPoints * 2;  // +2 times since already counted once
+        }
+    }
+
     document.getElementById('totalSpent').textContent = `£${totalSpent.toFixed(1)}m`;
     document.getElementById('budgetRemaining').textContent = `£${budgetRemaining.toFixed(1)}m`;
     document.getElementById('totalPoints').textContent = totalPoints.toFixed(0);
@@ -307,18 +316,30 @@ async function updateTeamDisplay() {
     } else {
         selectedPlayersDiv.innerHTML = selectedPlayers
             .sort((a, b) => a.position.localeCompare(b.position))
-            .map(player => `
-                <div class="selected-player" ${captainId === player.id ? 'style="background-color: #fff9c4; border-left: 4px solid #fbc02d;"' : ''}>
+            .map(player => {
+                let highlight = '';
+                let badge = '';
+                if (captainId === player.id) {
+                    highlight = 'style="background-color: #fff9c4; border-left: 4px solid #fbc02d;"';
+                    badge = ' ⭐ Captain';
+                } else if (substituteId === player.id) {
+                    highlight = 'style="background-color: #f3e5f5; border-left: 4px solid #9c27b0;"';
+                    badge = ' 🔄 Sub';
+                }
+                return `
+                <div class="selected-player" ${highlight}>
                     <div class="selected-player-info">
-                        <div class="selected-player-name">${player.name}${captainId === player.id ? ' ⭐ Captain' : ''}</div>
+                        <div class="selected-player-name">${player.name}${badge}</div>
                         <div class="selected-player-details">${player.position} • ${player.country} • £${player.price.toFixed(1)}m</div>
                     </div>
                     <div class="selected-player-actions">
                         <button class="captain-btn" onclick="setCaptain(${player.id})" title="Set as Captain">${captainId === player.id ? '✓' : 'C'}</button>
+                        <button class="sub-btn" onclick="setSubstitute(${player.id})" title="Set as Substitute">${substituteId === player.id ? '✓' : 'S'}</button>
                         <button class="remove-btn" onclick="removePlayer(${player.id})">Remove</button>
                     </div>
                 </div>
-            `)
+            `;
+            })
             .join('');
     }
 
@@ -336,11 +357,24 @@ function setCaptain(playerId) {
     updateTeamDisplay();
 }
 
+// Set substitute
+function setSubstitute(playerId) {
+    if (substituteId === playerId) {
+        substituteId = null;
+    } else {
+        substituteId = playerId;
+    }
+    updateTeamDisplay();
+}
+
 // Remove player
 function removePlayer(playerId) {
     selectedPlayerIds = selectedPlayerIds.filter(id => id !== playerId);
     if (captainId === playerId) {
         captainId = null;
+    }
+    if (substituteId === playerId) {
+        substituteId = null;
     }
     filterPlayers();
     updateTeamDisplay();
@@ -363,7 +397,8 @@ async function validateTeam() {
             },
             body: JSON.stringify({
                 playerIds: selectedPlayerIds,
-                captainId: captainId
+                captainId: captainId,
+                substituteId: substituteId
             })
         });
 
@@ -389,6 +424,8 @@ async function validateTeam() {
 function clearTeam() {
     if (confirm('Are you sure you want to clear your team?')) {
         selectedPlayerIds = [];
+        captainId = null;
+        substituteId = null;
         filterPlayers();
         updateTeamDisplay();
     }
@@ -403,6 +440,11 @@ function showSaveModal() {
 
     if (!captainId) {
         alert('You must select a captain for your team');
+        return;
+    }
+
+    if (!substituteId) {
+        alert('You must select a substitute (who will get triple points)');
         return;
     }
 
@@ -429,7 +471,8 @@ async function saveTeam() {
             body: JSON.stringify({
                 name: teamName,
                 playerIds: selectedPlayerIds,
-                captainId: captainId
+                captainId: captainId,
+                substituteId: substituteId
             })
         });
 
@@ -439,6 +482,7 @@ async function saveTeam() {
             // Reset team
             selectedPlayerIds = [];
             captainId = null;
+            substituteId = null;
             filterPlayers();
             updateTeamDisplay();
         } else {

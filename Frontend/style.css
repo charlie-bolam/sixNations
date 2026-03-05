@@ -331,6 +331,25 @@ main {
     transform: scale(1.1);
 }
 
+.sub-btn {
+    background: #e1bee7;
+    color: #4a148c;
+    border: 2px solid #9c27b0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    font-weight: bold;
+    transition: all 0.3s;
+    width: 35px;
+}
+
+.sub-btn:hover {
+    background: #9c27b0;
+    color: white;
+    transform: scale(1.1);
+}
+
 .remove-btn {
     background: #ff6b6b;
     color: white;
